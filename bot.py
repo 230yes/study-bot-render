@@ -2028,93 +2028,283 @@ def health():
             "docx_support": DOCX_AVAILABLE
         }
     }), 200
-
-# ============ НАСТРОЙКА ВЕБХУКА ============
-def setup_webhook():
-    """Автоматическая настройка вебхука"""
-    try:
-        app_url = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '') or os.environ.get('WEBHOOK_URL', '')
-        if not app_url:
-            logger.warning("⚠️ WEBHOOK_URL не настроен, используется polling")
-            return False
+    # ============ HTML СТРАНИЦА ============
+@app.route('/')
+def home():
+    return '''
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конспект Хелпер Бот - создание учебных материалов</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        webhook_url = f"https://{app_url}/webhook"
-        
-        logger.info(f"🔧 Настраиваю вебхук: {webhook_url}")
-        
-        # Удаляем старый вебхук
-        delete_url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook"
-        requests.get(delete_url, timeout=5)
-        
-        # Устанавливаем новый вебхук
-        set_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-        payload = {
-            "url": webhook_url,
-            "drop_pending_updates": True,
-            "max_connections": 40,
-            "allowed_updates": ["message", "callback_query", "edited_message"]
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
         }
         
-        response = requests.post(set_url, json=payload, timeout=10)
-        result = response.json()
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
         
-        if result.get('ok'):
-            logger.info(f"✅ Вебхук установлен: {webhook_url}")
-            return True
-        else:
-            logger.error(f"❌ Ошибка вебхука: {result}")
-            return False
+        header {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .bot-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .bot-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .bot-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #FF6B6B, #FFD93D);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+        }
+        
+        .bot-details h2 {
+            margin-bottom: 5px;
+        }
+        
+        .bot-username {
+            color: #FFD93D;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 15px;
+            transition: transform 0.3s;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(45deg, #00b09b, #96c93d);
+            color: white;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 20px 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 176, 155, 0.4);
+            text-align: center;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 176, 155, 0.6);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            min-width: 120px;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #FFD93D;
+            margin-bottom: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .bot-info {
+                flex-direction: column;
+                text-align: center;
+            }
             
-    except Exception as e:
-        logger.error(f"❌ Ошибка настройки вебхука: {e}")
-        return False
-
-# ============ ЗАПУСК ПРИЛОЖЕНИЯ ============
-if __name__ == '__main__':
-    logger.info("=" * 80)
-    logger.info("🚀 ЗАПУСК УЧЕБНОГО БОТА ПРЕМИУМ v9.0")
-    logger.info("=" * 80)
-    logger.info(f"🤖 Токен бота: {TOKEN[:10]}...")
-    logger.info(f"📦 Зависимости: PDF {'✅' if PDF_AVAILABLE else '❌'}, DOCX {'✅' if DOCX_AVAILABLE else '❌'}")
-    logger.info("=" * 80)
-    
-    # Получение информации о боте
-    try:
-        bot_info_url = f"https://api.telegram.org/bot{TOKEN}/getMe"
-        response = requests.get(bot_info_url, timeout=5)
-        bot_info = response.json()
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Конспект Хелпер Бот</h1>
+            <p class="subtitle">AI-помощник для создания учебных материалов любой сложности</p>
+        </header>
         
-        if bot_info.get("ok"):
-            bot_name = bot_info["result"]["first_name"]
-            bot_username = bot_info["result"]["username"]
-            logger.info(f"🤖 Имя бота: {bot_name}")
-            logger.info(f"🤖 Username: @{bot_username}")
-        else:
-            logger.error(f"❌ Ошибка получения информации о боте: {bot_info}")
-    except Exception as e:
-        logger.error(f"❌ Не удалось получить информацию о боте: {e}")
-    
-    # Настройка вебхука
-    webhook_set = setup_webhook()
-    
-    if not webhook_set:
-        logger.info("ℹ️ Вебхук не настроен, возможно используется polling")
-    
-    # Запуск Flask сервера
-    port = int(os.environ.get('PORT', 8080))
-    host = os.environ.get('HOST', '0.0.0.0')
-    debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
-    
-    logger.info(f"🌍 Запуск на {host}:{port}")
-    logger.info(f"🔧 Режим отладки: {'✅' if debug_mode else '❌'}")
-    logger.info("=" * 80)
-    logger.info("✅ Бот готов к работе! Ожидание запросов...")
-    logger.info("=" * 80)
-    
-    app.run(
-        host=host,
-        port=port,
-        debug=debug_mode,
-        use_reloader=False,
-        threaded=True
-        )
+        <div class="bot-card">
+            <div class="bot-info">
+                <div class="bot-avatar">
+                    📚
+                </div>
+                <div class="bot-details">
+                    <h2>Конспект Хелпер Бот</h2>
+                    <div class="bot-username">@Konspekt_help_bot</div>
+                    <p>Умный помощник для студентов и преподавателей</p>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">4</div>
+                    <div>Типа контента</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">10</div>
+                    <div>Объемов А4</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">3</div>
+                    <div>Формата файлов</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">24/7</div>
+                    <div>Работает</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank">
+                    🚀 Открыть в Telegram
+                </a>
+                <a href="/health" class="btn" style="background: linear-gradient(45deg, #8e2de2, #4a00e0);">
+                    ❤️ Статус сервера
+                </a>
+            </div>
+        </div>
+        
+        <h2 style="text-align: center; margin: 40px 0 20px 0;">✨ Что умеет бот</h2>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">📚</div>
+                <h3>Конспекты</h3>
+                <p>Структурированные учебные материалы по любой теме. Указывайте объем в листах А4.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📄</div>
+                <h3>Рефераты</h3>
+                <p>Полноценные научные работы с введением, основной частью и заключением.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🎤</div>
+                <h3>Презентации</h3>
+                <p>Структура слайдов с описанием дизайна и рекомендациями по выступлению.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">✍️</div>
+                <h3>Эссе</h3>
+                <p>Аналитические сочинения с аргументацией и личной позицией.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>Для всех устройств</h3>
+                <p>Адаптируется под телефон, компьютер, планшет или смарт-часы.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📁</div>
+                <h3>Экспорт файлов</h3>
+                <p>Скачивайте материалы в форматах PDF, DOCX или обычным текстом.</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 40px 0;">
+            <h3>🎯 Как использовать</h3>
+            <p style="margin: 15px 0; opacity: 0.9;">
+                Просто напишите боту: <strong>"конспект по философии 3 листа"</strong><br>
+                Или: <strong>"презентация на тему экология 10 слайдов"</strong>
+            </p>
+            <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank" style="background: linear-gradient(45deg, #FF6B6B, #FFD93D);">
+                📱 Попробовать бесплатно
+            </a>
+        </div>
+        
+        <footer>
+            <p>© 2024 Конспект Хелпер Бот (@Konspekt_help_bot)</p>
+            <p>Создание учебных материалов стало проще | Версия 9.0</p>
+            <p>Работает на Python + Flask | Автоматическая генерация контента</p>
+        </footer>
+    </div>
+</body>
+</html>
+'''
