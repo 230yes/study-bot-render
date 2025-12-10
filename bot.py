@@ -1129,7 +1129,7 @@ def handle_file_format_selection(chat_id: int, user_id: str, topic: str, content
         text=format_text,
         reply_markup=format_keyboard
     )
-    def handle_format_callback(callback_data: str, chat_id: int, user_id: str) -> dict:
+def handle_format_callback(callback_data: str, chat_id: int, user_id: str) -> dict:
     """Обработка выбора формата файла"""
     parts = callback_data.split("_")
     if len(parts) < 5:
