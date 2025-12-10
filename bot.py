@@ -5,19 +5,31 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
+from flask import Flask
+import threading
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Веб-сервер для Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "✅ Бот активен! Работает на Render 24/7"
+
+@app.route('/health')
+def health():
+    return "🟢 OK", 200
+
 # Получаем токен из переменных окружения
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 if not BOT_TOKEN:
-    print("❌ ОШИБКА: Токен не найден!")
-    print("✅ Решение: Добавьте BOT_TOKEN в настройках Render")
+    logger.error("❌ ОШИБКА: Токен не найден!")
     exit()
 
-print(f"✅ Токен получен: {BOT_TOKEN[:10]}...")
+logger.info(f"✅ Токен получен: {BOT_TOKEN[:10]}...")
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN)
@@ -65,7 +77,6 @@ async def help_command(message: types.Message):
 @dp.message()
 async def handle_topic(message: types.Message):
     """Обработка любой темы"""
-    # Игнорируем команды
     if message.text.startswith('/'):
         return
     
@@ -75,16 +86,13 @@ async def handle_topic(message: types.Message):
         await message.answer("❌ Слишком короткая тема. Напишите подробнее.")
         return
     
-    # Показываем статус генерации
     status_message = await message.answer(
         f"🔄 *Генерирую конспект по теме:*\n*{topic}*...",
         parse_mode=ParseMode.MARKDOWN
     )
     
-    # Имитация работы (в реальности здесь будет AI)
     await asyncio.sleep(1)
     
-    # Создаём конспект
     response = f"""📚 *КОНСПЕКТ: {topic.upper()}*
 
 *Дата создания:* {datetime.now().strftime('%d.%m.%Y %H:%M')}
@@ -108,11 +116,9 @@ async def handle_topic(message: types.Message):
 
 🚀 *Бот работает на Render - стабильно и бесплатно!*"""
     
-    # Удаляем статус и отправляем результат
     await status_message.delete()
     await message.answer(response, parse_mode=ParseMode.MARKDOWN)
     
-    # Дополнительная информация
     await message.answer(
         "✨ *Совет для лучшего результата:*\n"
         "Напишите тему более конкретно, например:\n"
@@ -122,24 +128,29 @@ async def handle_topic(message: types.Message):
     )
 
 # ========== ЗАПУСК БОТА ==========
-async def main():
-    """Основная функция запуска бота"""
-    print("=" * 60)
-    print("🚀 УЧЕБНЫЙ БОТ ЗАПУСКАЕТСЯ")
-    print("=" * 60)
-    print(f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}")
-    print(f"📍 Хостинг: Render.com")
-    print(f"🌐 Режим: Web Service 24/7")
-    print("=" * 60)
-    print("✅ Бот активен! Ожидание сообщений...")
-    print("💡 Напишите боту /start для начала работы")
-    print("=" * 60)
+async def run_bot():
+    """Запуск Telegram бота"""
+    logger.info("🚀 УЧЕБНЫЙ БОТ ЗАПУСКАЕТСЯ")
+    logger.info(f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}")
     
     try:
         await dp.start_polling(bot)
     except Exception as e:
         logger.error(f"Ошибка в работе бота: {e}")
-        print(f"💥 Критическая ошибка: {e}")
+
+def start_bot():
+    """Запуск бота в отдельном потоке"""
+    asyncio.run(run_bot())
+
+def start_web_server():
+    """Запуск веб-сервера"""
+    app.run(host='0.0.0.0', port=8080, debug=False)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Запускаем Flask в отдельном потоке
+    web_thread = threading.Thread(target=start_web_server)
+    web_thread.daemon = True
+    web_thread.start()
+    
+    # Запускаем бота
+    start_bot()
