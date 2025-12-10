@@ -1366,7 +1366,7 @@ def create_pdf_file(topic: str, content: str, content_type: str) -> bytes:
         logger.error(f"❌ Ошибка создания PDF: {e}")
         # Возвращаем текст как UTF-8 если PDF не удалось создать
         return f"PDF ERROR: {e}\n\n{content}".encode('utf-8')
-        def create_docx_file(topic: str, content: str, content_type: str) -> bytes:
+def create_docx_file(topic: str, content: str, content_type: str) -> bytes:
     """Создание DOCX файла"""
     try:
         document = Document()
