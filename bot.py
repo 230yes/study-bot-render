@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-📚 УЧЕБНЫЙ БОТ - ВЕРСИЯ ДЛЯ RENDER
-С выбором устройства и расширенным функционалом
+📚 УЧЕБНЫЙ БОТ ПРЕМИУМ - ВЕРСИЯ ДЛЯ RENDER
+С экспортом в PDF/DOCX и выбором устройства
 """
 
 import os
 import asyncio
 import logging
+import io
+import tempfile
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import threading
 import json
+import time
 
 # ============ 1. НАСТРОЙКА И FLASK APP ============
 logging.basicConfig(
@@ -19,7 +22,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Flask app для Render (обязательно!)
+# Flask app для Render
 app = Flask(__name__)
 
 # Получаем токен из переменных окружения Render
@@ -30,8 +33,9 @@ if not TOKEN:
 
 logger.info(f"✅ Токен получен: {TOKEN[:10]}...")
 
-# База данных пользователей (временная)
+# База данных пользователей
 user_devices = {}
+user_settings = {}
 
 # ============ 2. ИМПОРТ AIOGRAM ============
 try:
@@ -40,6 +44,7 @@ try:
     from aiogram.enums import ParseMode
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    from aiogram.client.default import DefaultBotProperties
     logger.info("✅ Библиотеки aiogram загружены")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта: {e}")
@@ -47,18 +52,40 @@ except ImportError as e:
     exit()
 
 # ============ 3. ИНИЦИАЛИЗАЦИЯ БОТА ============
-bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
+# Правильная инициализация для aiogram 3.7.0+
+default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+bot = Bot(token=TOKEN, default=default)
 dp = Dispatcher()
 
-# ============ 4. FLASK РОУТЫ ДЛЯ RENDER ============
+# ============ 4. ИМПОРТ ДЛЯ PDF/DOCX ============
+try:
+    # Для PDF
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.units import inch
+    
+    # Для DOCX
+    from docx import Document
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.style import WD_STYLE_TYPE
+    
+    PDF_DOCX_AVAILABLE = True
+    logger.info("✅ Библиотеки для PDF/DOCX загружены")
+except ImportError:
+    PDF_DOCX_AVAILABLE = False
+    logger.warning("⚠️ Библиотеки для PDF/DOCX не установлены. Установите: pip install python-docx reportlab")
+
+# ============ 5. FLASK РОУТЫ ============
 @app.route('/')
 def home():
-    """Главная страница для проверки работы"""
-    return """
+    return '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>🎓 Учебный Бот</title>
+        <title>🎓 Учебный Бот Премиум</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -66,39 +93,37 @@ def home():
                 padding: 50px;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
             }
             .container {
                 background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(10px);
                 padding: 40px;
                 border-radius: 20px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-                max-width: 600px;
+                backdrop-filter: blur(10px);
+                max-width: 800px;
+                margin: 0 auto;
             }
             h1 { font-size: 3em; margin-bottom: 20px; }
-            .status {
-                color: #4ade80;
-                font-size: 1.5em;
-                margin: 20px 0;
-                padding: 10px;
-                background: rgba(74, 222, 128, 0.1);
+            .features {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                margin: 30px 0;
+                text-align: left;
+            }
+            .feature {
+                background: rgba(255,255,255,0.05);
+                padding: 15px;
                 border-radius: 10px;
-                border: 2px solid #4ade80;
             }
             .btn {
                 display: inline-block;
-                margin-top: 20px;
                 padding: 15px 30px;
                 background: #0088cc;
                 color: white;
                 text-decoration: none;
                 border-radius: 10px;
                 font-size: 1.2em;
+                margin: 10px;
                 transition: all 0.3s;
             }
             .btn:hover {
@@ -109,171 +134,335 @@ def home():
     </head>
     <body>
         <div class="container">
-            <h1>🎓 Учебный Бот</h1>
-            <div class="status">✅ Активен на Render 24/7</div>
-            <p>Telegram бот работает в фоновом режиме</p>
+            <h1>🎓 Учебный Бот Премиум</h1>
+            <div style="color: #4ade80; font-size: 1.5em; margin: 20px;">
+                ✅ Активен на Render 24/7
+            </div>
+            
+            <div class="features">
+                <div class="feature">📚 Конспекты</div>
+                <div class="feature">📄 Рефераты</div>
+                <div class="feature">🎤 Доклады</div>
+                <div class="feature">✍️ Эссе</div>
+                <div class="feature">📱 Адаптация под устройства</div>
+                <div class="feature">📊 Экспорт в PDF/DOCX</div>
+                <div class="feature">🎨 Настройка оформления</div>
+                <div class="feature">🤖 AI-генерация</div>
+            </div>
+            
             <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank">
                 📱 Открыть в Telegram
             </a>
             <p style="margin-top: 30px; opacity: 0.8;">
-                Платформа: Render.com | Режим: Web Service
+                Платформа: Render.com | Режим: Web Service | Версия: Премиум
             </p>
         </div>
     </body>
     </html>
-    """
+    '''
 
 @app.route('/health')
 def health():
-    """Health check для Render"""
-    return jsonify({"status": "ok", "service": "study-bot"}), 200
+    return jsonify({
+        "status": "ok", 
+        "service": "study-bot-premium",
+        "features": ["pdf", "docx", "device_optimization", "ai_generation"],
+        "version": "2.0.0"
+    }), 200
 
-@app.route(f'/{TOKEN}', methods=['POST'])
-async def webhook_handler():
-    """Вебхук от Telegram"""
-    try:
-        update_data = request.json
-        update = types.Update(**update_data)
-        await dp.feed_update(bot, update)
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        logger.error(f"❌ Ошибка вебхука: {e}")
-        return jsonify({"status": "error"}), 500
+# ============ 6. ГЕНЕРАЦИЯ ФАЙЛОВ ============
+def generate_pdf(topic: str, content: str, device_type: str = None):
+    """Генерация PDF файла"""
+    buffer = io.BytesIO()
+    
+    # Создаем PDF документ
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=18
+    )
+    
+    # Стили
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=1  # center
+    )
+    
+    # Содержимое
+    story = []
+    
+    # Заголовок
+    story.append(Paragraph(f"Конспект: {topic}", title_style))
+    story.append(Spacer(1, 12))
+    
+    # Информация о устройстве
+    if device_type:
+        device_text = f"<b>Оптимизировано для:</b> {device_type}"
+        story.append(Paragraph(device_text, styles["Normal"]))
+        story.append(Spacer(1, 12))
+    
+    # Дата
+    date_text = f"<b>Дата создания:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    story.append(Paragraph(date_text, styles["Normal"]))
+    story.append(Spacer(1, 24))
+    
+    # Контент
+    content_paragraphs = content.split('\n')
+    for paragraph in content_paragraphs:
+        if paragraph.strip():
+            p = Paragraph(paragraph.replace('*', '<b>').replace('_', '<i>'), styles["Normal"])
+            story.append(p)
+            story.append(Spacer(1, 6))
+    
+    # Футер
+    story.append(Spacer(1, 30))
+    footer = Paragraph(
+        "<i>Сгенерировано Учебным Ботом на Render.com</i>",
+        ParagraphStyle('Footer', parent=styles["Normal"], fontSize=10, textColor='gray')
+    )
+    story.append(footer)
+    
+    # Собираем PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
-# ============ 5. ФУНКЦИИ ДЛЯ РАЗНЫХ УСТРОЙСТВ ============
+def generate_docx(topic: str, content: str, device_type: str = None):
+    """Генерация DOCX файла"""
+    # Создаем документ
+    doc = Document()
+    
+    # Стили
+    title_style = doc.styles.add_style('CustomTitle', WD_STYLE_TYPE.PARAGRAPH)
+    title_style.font.name = 'Arial'
+    title_style.font.size = Pt(24)
+    title_style.font.bold = True
+    title_style.font.color.rgb = RGBColor(0, 0, 0)
+    
+    # Заголовок
+    title = doc.add_paragraph(f'Конспект: {topic}')
+    title.style = 'CustomTitle'
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Информация
+    info = doc.add_paragraph()
+    info.add_run(f'Дата создания: {datetime.now().strftime("%d.%m.%Y %H:%M")}\n').bold = True
+    
+    if device_type:
+        info.add_run(f'Оптимизировано для: {device_type}\n').bold = True
+    
+    # Контент
+    content_lines = content.split('\n')
+    for line in content_lines:
+        if line.strip():
+            p = doc.add_paragraph(line.replace('*', '').replace('_', ''))
+    
+    # Футер
+    doc.add_page_break()
+    footer = doc.add_paragraph()
+    footer.add_run('Сгенерировано Учебным Ботом на Render.com').italic = True
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Сохраняем в буфер
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+# ============ 7. ФУНКЦИИ ДЛЯ РАЗНЫХ УСТРОЙСТВ ============
 def format_for_device(device_type: str, content: str, topic: str) -> str:
-    """Форматирование контента под конкретное устройство"""
-    if device_type == "phone":
-        return f"""📱 <b>Версия для телефона:</b>
+    """Форматирование под устройство"""
+    formats = {
+        "phone": f"""📱 <b>ВЕРСИЯ ДЛЯ ТЕЛЕФОНА</b>
 
 {content}
 
-📝 <i>Совет для телефона:</i>
-• Используйте режим чтения
-• Сохраняйте в заметки
-• Делитесь с одногруппниками"""
-    
-    elif device_type == "pc":
-        return f"""💻 <b>Версия для компьютера:</b>
+📝 <b>Советы для телефона:</b>
+• Используйте темную тему для чтения
+• Сохраните в PDF для оффлайн-доступа
+• Поделитесь с одногруппниками""",
+        
+        "pc": f"""💻 <b>ВЕРСИЯ ДЛЯ КОМПЬЮТЕРА</b>
 
 {content}
 
-📝 <i>Совет для ПК:</i>
+📝 <b>Советы для ПК:</b>
 • Распечатайте материал
-• Сохраните в PDF
-• Используйте для презентаций"""
+• Сохраните в DOCX для редактирования
+• Используйте для презентации""",
+        
+        "tablet": f"""📟 <b>ВЕРСИЯ ДЛЯ ПЛАНШЕТА</b>
+
+{content}
+
+📝 <b>Советы для планшета:</b>
+• Используйте стилус для заметок
+• Читайте в горизонтальном режиме
+• Синхронизируйте с облаком""",
+        
+        "watch": f"""⌚ <b>КРАТКАЯ ВЕРСИЯ ДЛЯ ЧАСОВ</b>
+
+<b>Конспект:</b> {topic[:50]}...
+
+📌 <b>Ключевые пункты:</b>
+• Основная идея 1
+• Основная идея 2
+• Основная идея 3
+
+📝 <b>Советы для часов:</b>
+• Используйте для быстрого повторения
+• Ставьте напоминания
+• Просматривайте в транспорте"""
+    }
     
-    elif device_type == "watch":
-        return f"""⌚ <b>Версия для часов:</b>
+    return formats.get(device_type, content)
 
-📌 <b>Краткий конспект:</b> {topic}
+def generate_ai_content(topic: str, format_type: str = "conspect") -> str:
+    """Генерация AI контента (имитация)"""
+    formats = {
+        "conspect": f"""📚 <b>КОНСПЕКТ ПО ТЕМЕ: {topic.upper()}</b>
 
-📝 <i>Совет для часов:</i>
-• Просматривайте в транспорте
-• Используйте для повторения
-• Ставьте напоминания"""
+<b>1. ВВЕДЕНИЕ</b>
+Тема "{topic}" является одной из наиболее актуальных в современной науке/образовании.
+
+<b>2. ОСНОВНЫЕ ПОНЯТИЯ</b>
+• <i>Термин 1</i> - краткое объяснение
+• <i>Термин 2</i> - краткое объяснение
+• <i>Термин 3</i> - краткое объяснение
+
+<b>3. ИСТОРИЧЕСКИЙ КОНТЕКСТ</b>
+Краткая история развития темы.
+
+<b>4. СОВРЕМЕННОЕ СОСТОЯНИЕ</b>
+Текущие исследования и достижения.
+
+<b>5. ПРАКТИЧЕСКОЕ ПРИМЕНЕНИЕ</b>
+Как используется в реальной жизни.
+
+<b>6. ВЫВОДЫ</b>
+Основные итоги и перспективы.""",
+        
+        "referat": f"""📄 <b>СТРУКТУРА РЕФЕРАТА: {topic.upper()}</b>
+
+<b>Титульный лист</b>
+- Название учебного заведения
+- Тема реферата
+- ФИО студента и преподавателя
+- Год выполнения
+
+<b>Оглавление</b>
+- Введение (1-2 страницы)
+- Основная часть (3-4 главы, 8-10 страниц)
+- Заключение (1-2 страницы)
+- Список литературы (5-10 источников)
+
+<b>Требования:</b>
+• Объем: 10-15 страниц
+• Шрифт: Times New Roman, 14pt
+• Интервал: 1.5
+• Поля: 2см со всех сторон""",
+        
+        "presentation": f"""🎤 <b>ПЛАН ПРЕЗЕНТАЦИИ: {topic.upper()}</b>
+
+<b>Слайд 1:</b> Титульный (тема, автор)
+<b>Слайд 2:</b> Оглавление
+<b>Слайд 3-5:</b> Введение и актуальность
+<b>Слайд 6-10:</b> Основная часть
+<b>Слайд 11:</b> Практические примеры
+<b>Слайд 12:</b> Выводы
+<b>Слайд 13:</b> Спасибо за внимание!
+
+<b>Советы:</b>
+• 1 слайд = 1 идея
+• Минимум текста, максимум визуалов
+• Время: 10-15 минут"""
+    }
     
-    else:  # default
-        return content
+    return formats.get(format_type, formats["conspect"])
 
-def generate_content(topic: str, device_type: str = None) -> str:
-    """Генерация учебного материала"""
-    
-    # Базовый контент
-    base_content = f"""📚 <b>КОНСПЕКТ: {topic.upper()}</b>
-
-📅 <b>Дата создания:</b> {datetime.now().strftime('%d.%m.%Y')}
-⏰ <b>Время:</b> {datetime.now().strftime('%H:%M')}
-
-<b>Структура материала:</b>
-1. <b>Введение</b> - актуальность и важность темы
-2. <b>Основные понятия</b> - ключевые термины и определения
-3. <b>Практическая часть</b> - примеры и применение
-4. <b>Выводы</b> - основные итоги и перспективы
-
-<b>Ключевые аспекты:</b>
-• Аспект 1: Важная информация по теме
-• Аспект 2: Основные принципы и законы
-• Аспект 3: Практическое применение в жизни
-
-<b>Рекомендации по изучению:</b>
-1. Изучайте постепенно, по частям
-2. Делайте пометки и выделяйте главное
-3. Повторяйте материал через 24 часа
-4. Применяйте на практике
-
-🎯 <b>Для углубленного изучения:</b>
-• Найдите дополнительную литературу
-• Посмотрите видео-лекции
-• Обсудите с преподавателем"""
-
-    # Форматируем под устройство
-    if device_type and device_type in ["phone", "pc", "watch"]:
-        return format_for_device(device_type, base_content, topic)
-    
-    return base_content
-
-# ============ 6. КОМАНДЫ БОТА ============
+# ============ 8. КОМАНДЫ БОТА ============
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     """Команда /start"""
     user = message.from_user
-    user_id = str(user.id)
     
-    # Приветствие
-    await message.answer(
-        f"👋 <b>Привет, {user.first_name}!</b>\n\n"
-        "🎓 <b>Я — учебный бот-помощник</b>\n\n"
-        "<b>📚 Что я умею:</b>\n"
-        "• Создавать конспекты по любой теме\n"
-        "• Форматировать под ваше устройство\n"
-        "• Генерировать структуру для учёбы\n"
-        "• Давать советы по эффективному обучению\n\n"
-        "<b>📱 Выберите устройство:</b>\n"
-        "Используйте /device чтобы настроить отображение\n\n"
-        "<b>💡 Как использовать:</b>\n"
-        "Просто напишите тему, например:\n"
-        "<i>искусственный интеллект</i>\n"
-        "<i>квантовая физика</i>\n"
-        "<i>история древнего рима</i>\n\n"
-        "<b>⚡ Бот работает на Render.com 24/7</b>"
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(text="📱 Выбрать устройство", callback_data="menu_device"),
+        InlineKeyboardButton(text="📊 Создать конспект", callback_data="menu_conspect")
+    )
+    keyboard.row(
+        InlineKeyboardButton(text="📄 Экспорт в PDF/DOCX", callback_data="menu_export"),
+        InlineKeyboardButton(text="⚙️ Настройки", callback_data="menu_settings")
     )
     
-    # Предлагаем выбрать устройство
-    await device_cmd(message)
+    await message.answer(
+        f"👋 <b>Добро пожаловать, {user.first_name}!</b>\n\n"
+        "🎓 <b>УЧЕБНЫЙ БОТ ПРЕМИУМ</b>\n\n"
+        "<b>✨ Доступные функции:</b>\n"
+        "• 📚 Умные конспекты и рефераты\n"
+        "• 📱 Адаптация под ваше устройство\n"
+        "• 📊 Экспорт в PDF и DOCX\n"
+        "• 🎨 Настройка оформления\n"
+        "• 🤖 AI-генерация материала\n"
+        "• 💾 Сохранение истории\n\n"
+        "<b>🚀 Как начать:</b>\n"
+        "1. Выберите устройство\n"
+        "2. Напишите тему\n"
+        "3. Получите результат\n"
+        "4. Экспортируйте в нужный формат\n\n"
+        "<i>Используйте кнопки ниже или команды:</i>\n"
+        "/device - выбор устройства\n"
+        "/export - экспорт в файлы\n"
+        "/ai - AI-генерация\n"
+        "/help - полная справка",
+        reply_markup=keyboard.as_markup()
+    )
 
 @dp.message(Command("help"))
 async def help_cmd(message: types.Message):
     """Команда /help"""
     await message.answer(
-        "🆘 <b>ПОМОЩЬ ПО БОТУ</b>\n\n"
-        "<b>🔧 Основные команды:</b>\n"
-        "/start - начать работу с ботом\n"
-        "/help - получить эту справку\n"
-        "/device - выбрать устройство\n"
-        "/status - проверить статус\n\n"
+        "🆘 <b>ПОЛНАЯ СПРАВКА</b>\n\n"
+        "<b>📋 Основные команды:</b>\n"
+        "/start - главное меню\n"
+        "/help - эта справка\n"
+        "/device - выбор устройства\n"
+        "/export - экспорт в файлы\n"
+        "/ai - AI-генерация\n"
+        "/settings - настройки\n"
+        "/history - история запросов\n\n"
         "<b>🎯 Как получить конспект:</b>\n"
-        "1. Выберите устройство командой /device\n"
-        "2. Напишите тему для конспекта\n"
-        "3. Получите отформатированный материал\n\n"
+        "1. Напишите тему (например: 'квантовая физика')\n"
+        "2. Добавьте формат (например: 'реферат по истории')\n"
+        "3. Получите материал\n"
+        "4. Экспортируйте командой /export\n\n"
         "<b>📱 Доступные устройства:</b>\n"
-        "• 📱 Телефон - оптимизировано для мобильных\n"
-        "• 💻 Компьютер - полная версия для ПК\n"
-        "• ⌚ Часы - краткая версия для умных часов\n\n"
-        "<b>🚀 Примеры запросов:</b>\n"
-        "• математический анализ\n"
-        "• программирование на python\n"
-        "• философия стоицизма\n"
-        "• биология клетки\n\n"
-        "<b>⚡ Особенности Render:</b>\n"
-        "• Работает 24/7\n"
-        "• Быстрые ответы\n"
-        "• Автообновление"
+        "• 📱 Телефон - мобильная версия\n"
+        "• 💻 Компьютер - полная версия\n"
+        "• 📟 Планшет - промежуточная версия\n"
+        "• ⌚ Часы - краткая версия\n\n"
+        "<b>📊 Форматы экспорта:</b>\n"
+        "• PDF - для печати и чтения\n"
+        "• DOCX - для редактирования\n"
+        "• TXT - простой текст\n\n"
+        "<b>⚡ Особенности версии:</b>\n"
+        "• Работает 24/7 на Render\n"
+        "• Быстрая генерация\n"
+        "• Сохранение настроек\n"
+        "• Регулярные обновления"
     )
 
 @dp.message(Command("device"))
 async def device_cmd(message: types.Message):
-    """Выбор устройства - инлайн клавиатура"""
+    """Выбор устройства"""
     user_id = str(message.from_user.id)
     
     builder = InlineKeyboardBuilder()
@@ -282,41 +471,83 @@ async def device_cmd(message: types.Message):
         InlineKeyboardButton(text="💻 Компьютер", callback_data="device_pc"),
     )
     builder.row(
+        InlineKeyboardButton(text="📟 Планшет", callback_data="device_tablet"),
         InlineKeyboardButton(text="⌚ Часы", callback_data="device_watch"),
-        InlineKeyboardButton(text="❌ Без оптимизации", callback_data="device_none"),
     )
     
-    current_device = user_devices.get(user_id, "не выбрано")
+    current = user_devices.get(user_id, "не выбрано")
     
     await message.answer(
         f"📱 <b>ВЫБОР УСТРОЙСТВА</b>\n\n"
-        f"Текущее устройство: <b>{current_device}</b>\n\n"
-        "Выберите устройство, которое вы используете:\n\n"
-        "• <b>📱 Телефон</b> - оптимизировано для мобильных экранов\n"
-        "• <b>💻 Компьютер</b> - полная версия для больших экранов\n"
-        "• <b>⌚ Часы</b> - краткая версия для умных часов\n"
-        "• <b>❌ Без оптимизации</b> - стандартный формат\n\n"
-        "Это повлияет на формат и длину ответов.",
+        f"Текущее: <b>{current}</b>\n\n"
+        "<b>Оптимизация под:</b>\n"
+        "• <b>📱 Телефон</b> - компактный формат\n"
+        "• <b>💻 Компьютер</b> - полная версия\n"
+        "• <b>📟 Планшет</b> - средний формат\n"
+        "• <b>⌚ Часы</b> - краткая версия\n\n"
+        "<i>Влияет на формат ответов и экспорта</i>",
         reply_markup=builder.as_markup()
     )
 
-@dp.message(Command("status"))
-async def status_cmd(message: types.Message):
-    """Команда /status"""
+@dp.message(Command("export"))
+async def export_cmd(message: types.Message):
+    """Экспорт в файлы"""
     user_id = str(message.from_user.id)
-    device = user_devices.get(user_id, "не выбрано")
+    last_topic = user_settings.get(f"{user_id}_last_topic", "нет данных")
+    
+    if last_topic == "нет данных":
+        await message.answer(
+            "📊 <b>ЭКСПОРТ МАТЕРИАЛА</b>\n\n"
+            "Сначала создайте конспект командой или напишите тему.\n"
+            "Затем используйте /export для сохранения в файл."
+        )
+        return
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📄 PDF", callback_data="export_pdf"),
+        InlineKeyboardButton(text="📝 DOCX", callback_data="export_docx"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="📋 TXT", callback_data="export_txt"),
+    )
     
     await message.answer(
-        f"📊 <b>СТАТУС СИСТЕМЫ</b>\n\n"
-        f"👤 <b>Пользователь:</b> {message.from_user.first_name}\n"
-        f"📱 <b>Устройство:</b> {device}\n"
-        f"🆔 <b>ID:</b> {user_id}\n\n"
-        f"🌐 <b>Платформа:</b> Render.com\n"
-        f"⚡ <b>Режим работы:</b> 24/7 Web Service\n"
-        f"✅ <b>Статус бота:</b> Активен\n\n"
-        f"<i>Все системы работают нормально!</i>"
+        f"📊 <b>ЭКСПОРТ КОНСПЕКТА</b>\n\n"
+        f"Тема: <b>{last_topic}</b>\n\n"
+        "<b>Выберите формат:</b>\n"
+        "• <b>📄 PDF</b> - для печати и чтения\n"
+        "• <b>📝 DOCX</b> - для редактирования\n"
+        "• <b>📋 TXT</b> - простой текст\n\n"
+        "<i>Файлы будут сгенерированы и отправлены</i>",
+        reply_markup=builder.as_markup()
     )
 
+@dp.message(Command("ai"))
+async def ai_cmd(message: types.Message):
+    """AI-генерация"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📚 Конспект", callback_data="ai_conspect"),
+        InlineKeyboardButton(text="📄 Реферат", callback_data="ai_referat"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="🎤 Презентация", callback_data="ai_presentation"),
+        InlineKeyboardButton(text="✍️ Эссе", callback_data="ai_essay"),
+    )
+    
+    await message.answer(
+        "🤖 <b>AI-ГЕНЕРАЦИЯ МАТЕРИАЛА</b>\n\n"
+        "<b>Выберите тип материала:</b>\n"
+        "• <b>📚 Конспект</b> - структурированные заметки\n"
+        "• <b>📄 Реферат</b> - научная работа\n"
+        "• <b>🎤 Презентация</b> - план выступления\n"
+        "• <b>✍️ Эссе</b> - развернутое сочинение\n\n"
+        "<i>После выбора напишите тему</i>",
+        reply_markup=builder.as_markup()
+    )
+
+# ============ 9. ОБРАБОТКА CALLBACK ============
 @dp.callback_query(F.data.startswith("device_"))
 async def device_callback(callback: types.CallbackQuery):
     """Обработка выбора устройства"""
@@ -325,144 +556,62 @@ async def device_callback(callback: types.CallbackQuery):
     
     device_names = {
         "phone": "📱 Телефон",
-        "pc": "💻 Компьютер", 
-        "watch": "⌚ Часы",
-        "none": "❌ Без оптимизации"
+        "pc": "💻 Компьютер",
+        "tablet": "📟 Планшет",
+        "watch": "⌚ Часы"
     }
     
     device_name = device_names.get(device_type, "Неизвестно")
     user_devices[user_id] = device_name
     
     await callback.message.edit_text(
-        f"✅ <b>Устройство выбрано!</b>\n\n"
-        f"Теперь вы используете: <b>{device_name}</b>\n\n"
-        f"Все материалы будут оптимизированы для этого устройства.\n\n"
-        f"<i>Напишите тему для конспекта, чтобы увидеть изменения!</i>"
+        f"✅ <b>УСТРОЙСТВО ВЫБРАНО</b>\n\n"
+        f"Теперь используется: <b>{device_name}</b>\n\n"
+        f"<i>Все материалы будут оптимизированы для этого устройства</i>"
     )
-    await callback.answer()
+    await callback.answer(f"Устройство: {device_name}")
 
-# ============ 7. ОБРАБОТКА ТЕМ ============
-@dp.message(F.text)
-async def handle_text(message: types.Message):
-    """Обработка любой текстовой темы"""
-    # Пропускаем команды
-    if message.text.startswith('/'):
+@dp.callback_query(F.data.startswith("export_"))
+async def export_callback(callback: types.CallbackQuery):
+    """Обработка экспорта"""
+    user_id = str(callback.from_user.id)
+    export_type = callback.data.replace("export_", "")
+    last_topic = user_settings.get(f"{user_id}_last_topic", "Общая тема")
+    last_content = user_settings.get(f"{user_id}_last_content", "Контент не найден")
+    device_type = user_devices.get(user_id, "phone")
+    
+    if not PDF_DOCX_AVAILABLE and export_type in ["pdf", "docx"]:
+        await callback.message.answer(
+            "❌ <b>Экспорт недоступен</b>\n\n"
+            "Библиотеки для генерации PDF/DOCX не установлены.\n"
+            "Используйте TXT формат."
+        )
+        await callback.answer()
         return
     
-    topic = message.text.strip()
-    user_id = str(message.from_user.id)
+    await callback.message.answer("🔄 <b>Генерирую файл...</b>")
     
-    if len(topic) < 2:
-        await message.answer("❌ <b>Слишком короткая тема.</b>\nНапишите подробнее, минимум 2 символа.")
-        return
-    
-    # Получаем выбранное устройство
-    device_display = user_devices.get(user_id, "не выбрано")
-    device_type = None
-    if "Телефон" in device_display:
-        device_type = "phone"
-    elif "Компьютер" in device_display:
-        device_type = "pc"
-    elif "Часы" in device_display:
-        device_type = "watch"
-    
-    # Статус генерации
-    status_msg = await message.answer(
-        f"🔄 <b>Генерирую конспект...</b>\n"
-        f"Тема: <i>{topic}</i>\n"
-        f"Устройство: <b>{device_display}</b>\n\n"
-        f"<i>Подбираю оптимальный формат...</i>"
-    )
-    
-    # Имитация обработки
-    await asyncio.sleep(1)
-    
-    # Генерация контента
-    content = generate_content(topic, device_type)
-    
-    # Удаляем статус и отправляем результат
-    await status_msg.delete()
-    await message.answer(content)
-    
-    # Дополнительные советы
-    if device_type == "phone":
-        await message.answer(
-            "📱 <b>Совет для телефона:</b>\n"
-            "• Используйте режим 'картинка в картинке' для видео\n"
-            "• Сохраняйте конспекты в заметках\n"
-            "• Делитесь с друзьями через Telegram"
-        )
-    elif device_type == "pc":
-        await message.answer(
-            "💻 <b>Совет для компьютера:</b>\n"
-            "• Распечатайте материал для удобства\n"
-            "• Сохраните в PDF для архива\n"
-            "• Используйте для подготовки к экзаменам"
-        )
-    elif device_type == "watch":
-        await message.answer(
-            "⌚ <b>Совет для часов:</b>\n"
-            "• Просматривайте в транспорте\n"
-            "• Используйте для быстрого повторения\n"
-            "• Ставьте напоминания о занятиях"
-        )
-    
-    # Предложение улучшить
-    await asyncio.sleep(1)
-    await message.answer(
-        "💡 <b>Хотите улучшить результат?</b>\n\n"
-        "Попробуйте:\n"
-        "1. Уточнить тему\n"
-        "2. Выбрать другое устройство /device\n"
-        "3. Запросить другой формат\n\n"
-        "<i>Скоро добавлю: PDF экспорт, AI-генерацию, настройки!</i>"
-    )
-
-# ============ 8. ЗАПУСК БОТА ============
-async def run_bot():
-    """Запуск Telegram бота"""
-    logger.info("=" * 70)
-    logger.info("🚀 УЧЕБНЫЙ БОТ ЗАПУСКАЕТСЯ НА RENDER")
-    logger.info("=" * 70)
-    logger.info(f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}")
-    logger.info(f"📍 Хостинг: Render.com")
-    logger.info(f"🤖 Токен: {TOKEN[:10]}...")
-    logger.info("=" * 70)
-    logger.info("✅ Бот активен! Ожидание сообщений...")
-    logger.info("💡 Напишите /start в Telegram для начала работы")
-    logger.info("=" * 70)
-    
-    # Устанавливаем вебхук
     try:
-        webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'study-bot.onrender.com')}/{TOKEN}"
-        await bot.set_webhook(
-            url=webhook_url,
-            drop_pending_updates=True
-        )
-        logger.info(f"✅ Вебхук установлен: {webhook_url}")
-    except Exception as e:
-        logger.error(f"❌ Ошибка вебхука: {e}")
-    
-    # Ожидаем завершения (никогда не завершится если всё ок)
-    await asyncio.Event().wait()
-
-def run_flask():
-    """Запуск Flask сервера"""
-    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
-
-def main():
-    """Главная функция запуска"""
-    # Запускаем Flask в отдельном потоке
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    
-    # Запускаем бота
-    asyncio.run(run_bot())
-
-# ============ 9. ТОЧКА ВХОДА ============
-if __name__ == "__main__":
-    # Для локального тестирования можно использовать polling:
-    # asyncio.run(dp.start_polling(bot))
-    
-    # Для Render используем Flask + вебхук
-    main()
+        if export_type == "pdf":
+            buffer = generate_pdf(last_topic, last_content, device_type)
+            filename = f"конспект_{last_topic[:20]}.pdf"
+            await bot.send_document(
+                chat_id=callback.from_user.id,
+                document=types.BufferedInputFile(buffer.getvalue(), filename=filename),
+                caption=f"📄 <b>PDF конспект:</b> {last_topic}"
+            )
+            
+        elif export_type == "docx":
+            buffer = generate_docx(last_topic, last_content, device_type)
+            filename = f"конспект_{last_topic[:20]}.docx"
+            await bot.send_document(
+                chat_id=callback.from_user.id,
+                document=types.BufferedInputFile(buffer.getvalue(), filename=filename),
+                caption=f"📝 <b>DOCX конспект:</b> {last_topic}"
+            )
+            
+        elif export_type == "txt":
+            content = f"Конспект: {last_topic}\n\n{last_content}"
+            await bot.send_document(
+                chat_id=callback.from_user.id,
+                document=
