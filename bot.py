@@ -614,4 +614,4 @@ async def export_callback(callback: types.CallbackQuery):
             content = f"Конспект: {last_topic}\n\n{last_content}"
             await bot.send_document(
                 chat_id=callback.from_user.id,
-                document=
+                document=)
