@@ -1,27 +1,50 @@
 import os
 import asyncio
 import logging
+import threading
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
 from flask import Flask
-import threading
+import requests
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Веб-сервер для Render
+# ========== ВЕБ-СЕРВЕР ДЛЯ RENDER ==========
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "✅ Бот активен! Работает на Render 24/7"
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Учебный Бот</title>
+        <style>
+            body { font-family: Arial; text-align: center; padding: 50px; }
+            .status { color: green; font-size: 24px; }
+        </style>
+    </head>
+    <body>
+        <h1>🎓 Учебный Бот</h1>
+        <div class="status">✅ Активен на Render 24/7</div>
+        <p>Бот работает в фоновом режиме и обрабатывает Telegram сообщения</p>
+        <p>Напишите боту в Telegram: <a href="https://t.me/Konspekt_help_bot">@Konspekt_help_bot</a></p>
+    </body>
+    </html>
+    """
 
 @app.route('/health')
 def health():
-    return "🟢 OK", 200
+    return {"status": "ok", "service": "study-bot"}, 200
+
+def run_web_server():
+    """Запуск веб-сервера"""
+    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+
+# ========== TELEGRAM БОТ ==========
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Получаем токен из переменных окружения
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -118,39 +141,58 @@ async def handle_topic(message: types.Message):
     
     await status_message.delete()
     await message.answer(response, parse_mode=ParseMode.MARKDOWN)
-    
-    await message.answer(
-        "✨ *Совет для лучшего результата:*\n"
-        "Напишите тему более конкретно, например:\n"
-        "'*История Древнего Рима для школьников*'\n\n"
-        "⚡ *Скоро добавлю:* PDF экспорт, AI-генерацию, настройки!",
-        parse_mode=ParseMode.MARKDOWN
-    )
 
 # ========== ЗАПУСК БОТА ==========
 async def run_bot():
     """Запуск Telegram бота"""
-    logger.info("🚀 УЧЕБНЫЙ БОТ ЗАПУСКАЕТСЯ")
-    logger.info(f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}")
+    print("=" * 60)
+    print("🚀 УЧЕБНЫЙ БОТ ЗАПУСКАЕТСЯ")
+    print("=" * 60)
+    print(f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}")
+    print("📍 Хостинг: Render.com")
+    print("=" * 60)
     
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, skip_updates=True)
     except Exception as e:
         logger.error(f"Ошибка в работе бота: {e}")
 
 def start_bot():
-    """Запуск бота в отдельном потоке"""
+    """Запуск бота в асинхронном режиме"""
     asyncio.run(run_bot())
 
-def start_web_server():
-    """Запуск веб-сервера"""
-    app.run(host='0.0.0.0', port=8080, debug=False)
+def keep_alive():
+    """Функция для поддержания активности (ping себя)"""
+    import time
+    url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')}"
+    while True:
+        try:
+            if url and 'render.com' in url:
+                requests.get(f"{url}/health", timeout=10)
+        except:
+            pass
+        time.sleep(300)  # Пинг каждые 5 минут
 
+# ========== ГЛАВНЫЙ ЗАПУСК ==========
 if __name__ == "__main__":
-    # Запускаем Flask в отдельном потоке
-    web_thread = threading.Thread(target=start_web_server)
+    # Запускаем веб-сервер в отдельном потоке
+    web_thread = threading.Thread(target=run_web_server)
     web_thread.daemon = True
     web_thread.start()
     
-    # Запускаем бота
-    start_bot()
+    # Запускаем бота в отдельном потоке
+    bot_thread = threading.Thread(target=start_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # Запускаем keep-alive
+    keep_alive_thread = threading.Thread(target=keep_alive)
+    keep_alive_thread.daemon = True
+    keep_alive_thread.start()
+    
+    # Бесконечный цикл для поддержания работы
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print("Бот завершает работу...")
