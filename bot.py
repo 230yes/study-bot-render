@@ -1774,269 +1774,6 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎓 Учебный Бот Премиум v9.0</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            border-radius: 25px;
-            padding: 50px;
-            max-width: 900px;
-            width: 100%;
-            box-shadow: 0 25px 75px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 3.5em;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcf7f);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .status {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(46, 204, 113, 0.2);
-            border: 2px solid #2ecc71;
-            color: #2ecc71;
-            padding: 12px 30px;
-            border-radius: 50px;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 25px auto;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 40px 0;
-        }
-        
-        .feature {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 25px 15px;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .feature:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .feature-icon {
-            font-size: 2.5em;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: linear-gradient(45deg, #0088cc, #00c6ff);
-            color: white;
-            text-decoration: none;
-            padding: 18px 45px;
-            border-radius: 50px;
-            font-size: 1.3em;
-            font-weight: bold;
-            margin: 30px 10px;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.4);
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.6);
-        }
-        
-        .stats-box {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 15px;
-            padding: 20px;
-            margin: 20px 0;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #00c6ff;
-        }
-        
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.8;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎓 Учебный Бот Премиум v9.0</h1>
-        
-        <div class="status">
-            ✅ Активен 24/7 • Пользователей: ''' + str(len(user_devices)) + '''
-        </div>
-        
-        <p style="font-size: 1.2em; margin-bottom: 30px; opacity: 0.9; line-height: 1.6;">
-            Интеллектуальный помощник для создания полноценных учебных материалов<br>
-            с разными форматами и указанием объема в листах А4
-        </p>
-        
-        <div class="stats-box">
-            <div class="stat-item">
-                <div class="stat-value">''' + str(len(user_devices)) + '''</div>
-                <div class="stat-label">Пользователей</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">''' + str(sum(len(h) for h in user_history.values())) + '''</div>
-                <div class="stat-label">Запросов</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">''' + str(len(pending_requests)) + '''</div>
-                <div class="stat-label">В работе</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">4</div>
-                <div class="stat-label">Типа контента</div>
-            </div>
-        </div>
-        
-        <div class="features-grid">
-            <div class="feature">
-                <span class="feature-icon">📚</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Конспекты</div>
-                <div>Полноценные учебные материалы</div>
-            </div>
-            
-            <div class="feature">
-                <span class="feature-icon">🎤</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Презентации</div>
-                <div>Структура слайдов с описанием</div>
-            </div>
-            
-            <div class="feature">
-                <span class="feature-icon">📄</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Рефераты</div>
-                <div>Научные работы со структурой</div>
-            </div>
-            
-            <div class="feature">
-                <span class="feature-icon">📊</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Объем в листах</div>
-                <div>Указывайте: "3 листа", "4л"</div>
-            </div>
-            
-            <div class="feature">
-                <span class="feature-icon">📱</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Адаптация</div>
-                <div>Телефон, компьютер, планшет</div>
-            </div>
-            
-            <div class="feature">
-                <span class="feature-icon">📁</span>
-                <div style="font-weight: bold; margin-bottom: 10px;">Экспорт</div>
-                <div>PDF, DOCX, TXT файлы</div>
-            </div>
-        </div>
-        
-        <div style="margin: 40px 0;">
-            <a href="/health" class="btn" style="background: linear-gradient(45deg, #00b09b, #96c93d);">
-                <span>❤️</span>
-                Проверить работоспособность
-            </a>
-            <a href="/stats" class="btn" style="background: linear-gradient(45deg, #8e2de2, #4a00e0);">
-                <span>📊</span>
-                Статистика системы
-            </a>
-        </div>
-        
-        <div style="margin: 40px 0;">
-            <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank">
-                <span>📱</span>
-                Открыть в Telegram
-            </a>
-        </div>
-        
-        <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-            <p>🚀 Работает на Render.com | 📄 Объем в листах А4 | 🎤 3 шаблона презентаций</p>
-            <p>📚 База знаний по темам | 🤖 AI-генерация | 📱 Адаптация под устройства</p>
-            <p>🕐 Время сервера: ''' + datetime.now().strftime("%d.%m.%Y %H:%M:%S") + '''</p>
-        </div>
-    </div>
-</body>
-</html>
-'''
-
-# ============ HEALTH CHECK ============
-@app.route('/health')
-def health():
-    return jsonify({
-        "status": "ok",
-        "service": "study-bot-premium-v9",
-        "version": "9.0.0",
-        "timestamp": datetime.now().isoformat(),
-        "features": [
-            "full_content_generation",
-            "volume_selection_a4", 
-            "presentation_templates",
-            "knowledge_base",
-            "pdf_export",
-            "docx_export",
-            "device_optimization",
-            "preview_generation",
-            "history_tracking",
-            "format_selection"
-        ],
-        "statistics": {
-            "users": len(user_devices),
-            "history_entries": sum(len(h) for h in user_history.values()),
-            "pending_requests": len(pending_requests),
-            "pdf_support": PDF_AVAILABLE,
-            "docx_support": DOCX_AVAILABLE
-        }
-    }), 200
-    # ============ HTML СТРАНИЦА ============
-@app.route('/')
-def home():
-    return '''
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Конспект Хелпер Бот - создание учебных материалов</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2151,6 +1888,15 @@ def home():
             box-shadow: 0 8px 20px rgba(0, 176, 155, 0.6);
         }
         
+        .btn-telegram {
+            background: linear-gradient(45deg, #0088cc, #00c6ff);
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.4);
+        }
+        
+        .btn-telegram:hover {
+            box-shadow: 0 8px 20px rgba(0, 136, 204, 0.6);
+        }
+        
         .stats {
             display: flex;
             justify-content: center;
@@ -2181,6 +1927,15 @@ def home():
             border-top: 1px solid rgba(255, 255, 255, 0.2);
             font-size: 0.9em;
             opacity: 0.8;
+        }
+        
+        .telegram-link {
+            font-size: 1.3em;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 136, 204, 0.2);
+            border-radius: 10px;
+            border: 2px solid #0088cc;
         }
         
         @media (max-width: 768px) {
@@ -2219,6 +1974,13 @@ def home():
                 </div>
             </div>
             
+            <div class="telegram-link">
+                🔗 <strong>Ссылка на бота:</strong> 
+                <a href="https://t.me/Konspekt_help_bot" style="color: #FFD93D; text-decoration: none;">
+                    https://t.me/Konspekt_help_bot
+                </a>
+            </div>
+            
             <div class="stats">
                 <div class="stat">
                     <div class="stat-number">4</div>
@@ -2239,11 +2001,14 @@ def home():
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank">
-                    🚀 Открыть в Telegram
+                <a href="https://t.me/Konspekt_help_bot" class="btn btn-telegram" target="_blank">
+                    📱 Открыть в Telegram
                 </a>
-                <a href="/health" class="btn" style="background: linear-gradient(45deg, #8e2de2, #4a00e0);">
+                <a href="/health" class="btn">
                     ❤️ Статус сервера
+                </a>
+                <a href="/set_webhook_manual" class="btn" style="background: linear-gradient(45deg, #8e2de2, #4a00e0);">
+                    ⚙️ Настроить вебхук
                 </a>
             </div>
         </div>
@@ -2294,8 +2059,21 @@ def home():
                 Просто напишите боту: <strong>"конспект по философии 3 листа"</strong><br>
                 Или: <strong>"презентация на тему экология 10 слайдов"</strong>
             </p>
-            <a href="https://t.me/Konspekt_help_bot" class="btn" target="_blank" style="background: linear-gradient(45deg, #FF6B6B, #FFD93D);">
-                📱 Попробовать бесплатно
+            
+            <div style="background: rgba(255, 255, 255, 0.08); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                <h4>📌 Прямая ссылка для перехода:</h4>
+                <p style="font-size: 1.1em;">
+                    <a href="https://t.me/Konspekt_help_bot" style="color: #00c6ff; text-decoration: none; font-weight: bold;">
+                        👉 t.me/Konspekt_help_bot
+                    </a>
+                </p>
+                <p style="opacity: 0.8; margin-top: 10px;">
+                    Нажмите ссылку выше или отсканируйте QR-код
+                </p>
+            </div>
+            
+            <a href="https://t.me/Konspekt_help_bot" class="btn btn-telegram" target="_blank" style="font-size: 1.3em; padding: 18px 50px;">
+                🚀 Начать пользоваться ботом
             </a>
         </div>
         
@@ -2303,8 +2081,13 @@ def home():
             <p>© 2024 Конспект Хелпер Бот (@Konspekt_help_bot)</p>
             <p>Создание учебных материалов стало проще | Версия 9.0</p>
             <p>Работает на Python + Flask | Автоматическая генерация контента</p>
+            <p style="margin-top: 10px;">
+                <strong>Техническая информация:</strong> 
+                <a href="/health" style="color: #FFD93D;">Статус</a> | 
+                <a href="/stats" style="color: #FFD93D;">Статистика</a> | 
+                <a href="/set_webhook_manual" style="color: #FFD93D;">Вебхук</a>
+            </p>
         </footer>
     </div>
 </body>
 </html>
-'''
