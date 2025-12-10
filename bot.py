@@ -995,7 +995,7 @@ def handle_device_command(chat_id: int, user_id: str):
 <code>телефон</code>, <code>компьютер</code>, <code>планшет</code> или <code>часы</code>"""
     
     send_telegram_message(chat_id, device_text)
-  def handle_export_command(chat_id: int, user_id: str):
+def handle_export_command(chat_id: int, user_id: str):
     """Обработка команды /export"""
     last_topic = user_settings.get(f"{user_id}_last_topic", None)
     
