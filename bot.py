@@ -1709,7 +1709,7 @@ def index():
             <div style="text-align: center; margin-top: 30px;">
                 <a href="/health" class="btn">Проверить здоровье</a>
                 <a href="/stats" class="btn">Статистика</a>
-                <a href="https://t.me/YourBotUsername" class="btn">Перейти к боту</a>
+                <a href="https://t.me/Konspekt_help_bot" class="btn">Перейти к боту</a>
             </div>
             
             <div style="margin-top: 30px; font-size: 0.9em; opacity: 0.8; text-align: center;">
