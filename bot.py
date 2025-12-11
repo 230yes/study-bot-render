@@ -73,11 +73,79 @@ EXPORT_FORMATS = {
     "docx": {"icon": "📝", "name": "DOCX", "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
     "txt": {"icon": "📋", "name": "TXT", "mime": "text/plain"}
 }
-
 DELIVERY_TYPES = {
     "text": {"icon": "💬", "name": "Текстом в чат", "description": "Полный текст сразу в чате"},
     "file": {"icon": "📁", "name": "Файлом", "description": "Скачивание в выбранном формате"}
 }
+# 1. ИМПОРТЫ и КОНСТАНТЫ в начале файла
+import os, logging, json, time, re, random
+from datetime import datetime
+from flask import Flask, request, jsonify
+import requests
+
+# Константы
+DEVICES = {...}
+CONTENT_TYPES = {...}
+# и т.д.
+
+# 2. ФУНКЦИИ СОЗДАНИЯ КЛАВИАТУР (сразу после констант)
+def create_device_keyboard() -> dict:
+    """Клавиатура для выбора устройства"""
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": f"{DEVICES['phone']['icon']} Телефон", "callback_data": "device_phone"},
+                {"text": f"{DEVICES['pc']['icon']} Компьютер", "callback_data": "device_pc"}
+            ],
+            [
+                {"text": f"{DEVICES['tablet']['icon']} Планшет", "callback_data": "device_tablet"},
+                {"text": f"{DEVICES['watch']['icon']} Часы", "callback_data": "device_watch"}
+            ]
+        ]
+    }
+    return keyboard
+
+def create_content_type_keyboard() -> dict:
+    """Клавиатура для выбора типа контента"""
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": f"{CONTENT_TYPES['conspect']['icon']} Конспект", "callback_data": "type_conspect"}],
+            [{"text": f"{CONTENT_TYPES['referat']['icon']} Реферат", "callback_data": "type_referat"}],
+            [{"text": f"{CONTENT_TYPES['presentation']['icon']} Презентация", "callback_data": "type_presentation"}],
+            [{"text": f"{CONTENT_TYPES['essay']['icon']} Эссе", "callback_data": "type_essay"}]
+        ]
+    }
+    return keyboard
+
+# 3. ОСНОВНЫЕ ФУНКЦИИ БОТА
+# Генерация контента
+def generate_full_content(...):
+    ...
+
+def generate_conspect_content(...):
+    ...
+
+# Отправка сообщений
+def send_telegram_message(...):
+    ...
+
+# Обработчики команд
+def handle_start_command(...):
+    ...
+
+def handle_device_command(...):  # Здесь используется create_device_keyboard()
+    ...
+
+def handle_help_command(...):
+    ...
+
+# 4. ВЕБХУК обработчики
+@app.route('/webhook', ...):
+    ...
+
+# 5. ЗАПУСК
+if __name__ == '__main__':
+    ...
 
 # ============ ОБЪЕМ В ЛИСТАХ А4 ============
 VOLUME_LEVELS = {
