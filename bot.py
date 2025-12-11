@@ -1202,7 +1202,7 @@ def handle_new_request(chat_id: int, user_id: str) -> dict:
         text="🔄 <b>НОВЫЙ ЗАПРОС</b>\n\nВыберите устройство для начала работы:",
         reply_markup=create_device_keyboard()
 )
-  def generate_and_send_content(chat_id: int, user_id: str, topic: str, 
+def generate_and_send_content(chat_id: int, user_id: str, topic: str, 
                             content_type: str, volume: str, 
                             delivery: str, file_format: str = None) -> dict:
     """Генерация и отправка контента"""
